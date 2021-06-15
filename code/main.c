@@ -1,87 +1,84 @@
-/******************************************************************************
- *                                                                            *
- * This program is distributed in the hope that it will be useful, but        *
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY *
- * or FITNESS FOR A PARTICULAR PURPOSE. This file and program are licensed    *
- * under the GNU Lesser General Public License Version 3, 29 June 2007.       *
- * The complete license can be accessed from the following location:          *
- * http://opensource.org/licenses/lgpl-3.0.html                               *
- *                                                                            *
- * Author: Yun Li (yunli.open@gmail.com)                                      *
- *   Date: 02/07/2010                                                         *
- *                                                                            *
- ******************************************************************************/
-
-/******************************************************************************
-  REVISION HISTORY
-  ================
-  
-  Date     Version  Name          Description
-  -------- -------  ------------  --------------------------------------------
-
-  -------- -------  ------------  --------------------------------------------
-
- ******************************************************************************/
-
 #include <stdio.h>
-#include "module.h"
+#include <stdlib.h>
+#include "error.h"
+#include "errtmr.h"
 
-error_t module_timer (system_state_t _state)
+void demo1()
 {
-    if (STATE_INITIALIZING == _state) {
-        printf ("  Info: timer module is initializing\n");
-    }
-    else if (STATE_UP == _state) {
-        printf ("  Info: timer module is up\n");
-    }
-    else if (STATE_DOWN == _state) {
-        printf ("  Info: timer module is down\n");
-    }
-    else if (STATE_DESTROYING == _state) {
-        printf ("  Info: timer module is destroying\n");
-    }
+    error_t err = ERROR_T(ERROR_TIMER_ALLOC_NOTIMER);
+    
+    printf("Module Timer: %X\n", MODULE_TIMER);
+    printf("Error Sample: %X\n", err);
+    printf("Error Mark: %X\n", (err & ERROR_MARK) != 0);
+    printf("Module ID: %X\n", MODULE_ID(err));
+    printf("Module Error ID: %X\n", MODULE_ERROR(err));
+}
+
+#define HANDLER(err) do {    \
+    int e=err;               \
+    if((e & ERROR_MARK) &&   \
+        !err_handler(e))     \
+        exit(e);             \
+} while(0)
+
+#define LOG(f, e)  printf("%s [%s:%d] => %X\n", #f, __FILE__, __LINE__, e)
+
+int do_task()
+{
+    // ... ... 
+    
+    return 0; //ERROR_T(ERROR_TIMER_STATE_INVSTATE);
+}
+
+int sub_func()
+{
+    int ret = 0;
+    
+    ret = do_task();
+    
+    if(ret & ERROR_MARK)
+        LOG(sub_func, ret);
+    
+    // return 0 for no exception
+    return ret; 
+}
+
+int err_handler(int e)
+{
+    int ret = 0;
+
+    if( e & ERROR_MARK )
+        switch(e ^ ERROR_MARK)
+        {
+            // handle something unexcepted 
+            case ERROR_TIMER_STATE_INVSTATE:
+                printf("Reset Timer State!!!\n");
+                ret = 1;
+                break;
+        }
+    else
+        ret = 1;
+    
+    // return 1 for success handling
+    return ret; 
+}
+
+void demo2()
+{
+    printf("demo2() begin ...\n");
+    
+    HANDLER(sub_func());
+    
+    printf("demo2() end ...\n");
+}
+
+int main()
+{
+    demo1();
+    
+    printf("\n");
+    
+    demo2();
     
     return 0;
 }
-
-error_t module_memory (system_state_t _state)
-{
-    if (STATE_INITIALIZING == _state) {
-        printf ("  Info: memory module is initializing\n");
-    }
-    else if (STATE_UP == _state) {
-        printf ("  Info: memory module is up\n");
-    }
-    else if (STATE_DOWN == _state) {
-        printf ("  Info: memory module is down\n");
-    }
-    else if (STATE_DESTROYING == _state) {
-        printf ("  Info: memory module is destroying\n");
-    }
-    
-    return 0;
-}
-
-void module_registration_entry ()
-{
-    (void) module_register ("Timer", MODULE_TIMER, OS_LEVEL, module_timer);
-    (void) module_register ("Memory", MODULE_HEAP, OS_LEVEL, module_memory);
-}
-
-int main ()
-{
-    module_registration_entry ();
-
-    printf ("\nSystem is going to be up\n");
-    if (0 != system_up ()) {
-        printf ("Error: system cannot be up\n");
-        return -1;
-    }
-    
-    printf ("\nSystem is going to be down\n");
-    system_down ();
-    
-    return 0;
-}
-
-
