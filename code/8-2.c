@@ -4,6 +4,6 @@
 int program()
 {
     printf("D.T.Software\n");
-	
+    
     exit(0);
 }
